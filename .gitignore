@@ -1,0 +1,19 @@
+# .gitignore (root level)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+dist/
+build/
+node_modules/
+.DS_Store
+*.log
+*.sqlite3
+*.db
+.env
+.vscode/
+.idea/
+web/.next/
+desktop/dist/
