@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import invite, activate
+from app.api import invite, activate, time_tracking
 
 app = FastAPI()
 
@@ -14,6 +14,7 @@ app.add_middleware(
 
 app.include_router(invite.router)
 app.include_router(activate.router)
+app.include_router(time_tracking.router)
 
 @app.get("/")
 def root():
