@@ -1,4 +1,5 @@
 const { app, BrowserWindow } = require('electron');
+const path = require('path');
 
 function createWindow () {
   const win = new BrowserWindow({
@@ -9,7 +10,8 @@ function createWindow () {
     }
   });
 
-  win.loadURL("https://localhost:5173"); // eventually will point to local app
+  // Load local HTML file (your desktop UI)
+  win.loadFile(path.join(__dirname, 'index.html'));
 }
 
 app.whenReady().then(createWindow);
