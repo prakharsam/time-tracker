@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import employee, time_tracking, projects, tasks
+from app.api import employee, time_tracking, projects, tasks, screenshots
 
 app = FastAPI()
 
@@ -17,6 +17,8 @@ app.include_router(time_tracking.router)
 app.include_router(employee.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
+app.include_router(screenshots.router)
+
 
 @app.get("/")
 def root():

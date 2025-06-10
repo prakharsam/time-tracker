@@ -3,3 +3,4 @@ EMPLOYEES = {}
 TIME_LOGS = []
 PROJECTS = {}
 TASKS = {}
+SCREENSHOTS = []
