@@ -32,3 +32,8 @@ def clock_out(req: ClockOutRequest):
             log.clock_out = datetime.utcnow()
             return {"message": "Clock-out successful", "log_id": log.id, "clock_out": log.clock_out}
     raise HTTPException(status_code=400, detail="No active session to clock out from.")
+
+@router.get("/time-logs")
+def get_time_logs(employee_id: str):
+    logs = [log for log in TIME_LOGS if log.employee_id == employee_id]
+    return logs
