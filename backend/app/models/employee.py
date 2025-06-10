@@ -8,6 +8,7 @@ class Employee(BaseModel):
     email: EmailStr
     is_active: bool = False
     activation_token: Optional[str] = None
+    role: str = "employee"  # Later use for role-based access
 
     @staticmethod
     def create(name: str, email: str):
@@ -17,4 +18,5 @@ class Employee(BaseModel):
             email=email,
             is_active=False,
             activation_token=str(uuid4()),
+            role="employee"
         )
