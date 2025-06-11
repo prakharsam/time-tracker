@@ -2,6 +2,10 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import uuid4
 
+class InviteRequest(BaseModel):
+    email: str
+    name: str
+
 class Employee(BaseModel):
     id: str
     name: str

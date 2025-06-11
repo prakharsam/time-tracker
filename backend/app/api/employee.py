@@ -1,11 +1,20 @@
-from fastapi import APIRouter, HTTPException, Query
+import uuid
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-from app.models.employee import Employee
-from app.services.storage import EMPLOYEES
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+from app.services.db_employee import get_employee, create_employee, deactivate_employee
+from app.models.employee import Employee, InviteRequest
+# ==========================
 
 router = APIRouter()
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # ==========================
 # Invite Employee
@@ -16,16 +25,17 @@ class InviteRequest(BaseModel):
     email: EmailStr
 
 @router.post("/invite")
-def invite_employee(req: InviteRequest):
-    if req.email in EMPLOYEES:
-        raise HTTPException(status_code=400, detail="Employee already invited")
+def invite(request: InviteRequest, db: Session = Depends(get_db)):
+    if get_employee(db, request.email):
+        raise HTTPException(status_code=400, detail="Employee already exists")
 
-    emp = Employee.create(req.name, req.email)
-    EMPLOYEES[req.email] = emp
+    activation_token = str(uuid.uuid4())
+    create_employee(db, email=request.email, name=request.name, activation_token=activation_token)
 
-    print(f"📩 Activation link: http://localhost:8000/activate?token={emp.activation_token}")
-
-    return {"message": "Employee invited successfully"}
+    return {
+        "message": "Invitation sent.",
+        "activation_link": f"http://localhost:8000/activate?email={request.email}&token={activation_token}"
+    }
 
 
 # ==========================
@@ -33,23 +43,33 @@ def invite_employee(req: InviteRequest):
 # ==========================
 
 @router.get("/activate")
-def activate_employee(token: str = Query(...)):
-    for emp in EMPLOYEES.values():
-        if emp.activation_token == token:
-            emp.is_active = True
-            return {"message": f"{emp.name} activated!"}
-    raise HTTPException(status_code=404, detail="Invalid token")
+def activate(email: str, token: str, db: Session = Depends(get_db)):
+    emp = get_employee(db, email)
 
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if emp.is_active:
+        return {"message": "Already activated"}
+
+    if emp.activation_token != token:
+        raise HTTPException(status_code=400, detail="Invalid activation token")
+
+    emp.is_active = True
+    emp.activation_token = None
+    db.commit()
+
+    return {"message": f"{emp.name} is now activated 🎉"}
 
 # ==========================
 # Get Employee Info (/me)
 # ==========================
 
 @router.get("/me")
-def get_employee(email: str = Query(...)):
-    emp = EMPLOYEES.get(email)
-    if not emp:
-        raise HTTPException(status_code=404, detail="Employee not found")
+def get_me(email: str, db: Session = Depends(get_db)):
+    emp = get_employee(db, email)
+    if not emp or not emp.is_active:
+        raise HTTPException(status_code=404, detail="Invalid or deactivated user")
     return emp
 
 
@@ -57,14 +77,14 @@ def get_employee(email: str = Query(...)):
 # Deactivate Employee
 # ==========================
 
-@router.delete("/employees/{email}")
-def deactivate_employee(email: str):
-    emp = EMPLOYEES.get(email)
+@router.delete("/employee/{email}")
+def delete_employee(email: str, db: Session = Depends(get_db)):
+    emp = get_employee(db, email)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
-    
     if not emp.is_active:
         return {"message": f"{emp.name} is already deactivated"}
-    
-    emp.is_active = False
-    return {"message": f"{emp.name} deactivated"}
+
+    deactivate_employee(db, email)
+    return {"message": f"{email} deactivated."}
+
