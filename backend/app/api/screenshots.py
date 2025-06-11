@@ -8,6 +8,11 @@ router = APIRouter()
 
 UPLOAD_DIR = "app/static/screenshots"
 
+@router.get("/screenshots")
+def get_screenshots(employee_id: str = Query(...)):
+    filtered = [s for s in SCREENSHOTS if s.employee_id == employee_id]
+    return filtered
+
 @router.post("/screenshot")
 async def upload_screenshot(
     employee_id: str = Form(...),
@@ -35,8 +40,3 @@ async def upload_screenshot(
 
     SCREENSHOTS.append(meta)
     return {"message": "Screenshot uploaded", "path": filepath}
-
-@router.get("/screenshots")
-def get_screenshots(employee_id: str = Query(...)):
-    filtered = [s for s in SCREENSHOTS if s.employee_id == employee_id]
-    return filtered

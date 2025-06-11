@@ -5,6 +5,7 @@ let startTime;
 const clockBtn = document.getElementById("clock-btn");
 const timerDisplay = document.getElementById("timer-display");
 
+let screenshotInterval;
 let currentUser;
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -82,6 +83,11 @@ clockBtn.addEventListener("click", async () => {
     clockBtn.classList.replace("bg-green-500", "bg-red-500");
 
     // ✅ Call backend clock-in API
+    console.log(JSON.stringify({
+      employee_id: currentUser.email, // TODO: replace with actual user from preload or memory
+      project_id: projectId,
+      task_id: taskId
+    }))
     await fetch("http://localhost:8000/clock-in", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,7 +100,14 @@ clockBtn.addEventListener("click", async () => {
 
     startTimer();
 
-    // 🧠 Placeholder for screenshot + metadata loop
+    // Placeholder for screenshot + metadata loop
+    screenshotInterval = setInterval(() => {
+      window.electronAPI.sendScreenshot({
+        email: currentUser.email,
+        has_permission: true
+      });
+    }, 10 * 1000); // every 30s
+    
     console.log("🟡 Starting screenshot & metadata capture loop...");
   } else {
     clockBtn.innerText = "Clock In";
@@ -108,6 +121,8 @@ clockBtn.addEventListener("click", async () => {
         employee_id: currentUser.email // TODO: replace with actual user
       })
     });
+
+    clearInterval(screenshotInterval);
 
     stopTimer();
 

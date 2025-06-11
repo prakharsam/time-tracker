@@ -1,6 +1,12 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { publicIpv4 } = require("public-ip");
+const macaddress = require("macaddress");
+const screenshot = require("screenshot-desktop");
+const FormData = require("form-data");
+const axios = require("axios");
+const streamifier = require("streamifier");
 
 function createWindow () {
   const win = new BrowserWindow({
@@ -25,6 +31,32 @@ function createWindow () {
   ipcMain.on('save-user', (event, employee) => {
     const userPath = path.join(__dirname, 'user.json');
     fs.writeFileSync(userPath, JSON.stringify(employee, null, 2));
+  });
+
+  ipcMain.on("capture-screenshot", async (event, { email, has_permission }) => {
+    try {
+      const imgBuffer = await screenshot({ format: 'png' });
+      const ip_address = await publicIpv4();
+      const mac_address = await macaddress.one();
+  
+      const form = new FormData();
+      form.append("employee_id", email);
+      form.append("has_permission", has_permission.toString()); // string!
+      form.append("ip_address", ip_address);
+      form.append("mac_address", mac_address);
+      form.append("image", streamifier.createReadStream(imgBuffer), {
+        filename: `${Date.now()}.png`,
+        contentType: "image/png",
+      });
+  
+      const headers = form.getHeaders();
+  
+      await axios.post("http://localhost:8000/screenshot", form, { headers, maxBodyLength: Infinity, });
+  
+      console.log("📸 Screenshot + metadata uploaded!");
+    } catch (err) {
+      console.error("❌ Screenshot/metadata upload failed:", err);
+    }
   });  
 }
 console.log("🔍 Preload path:", path.join(__dirname, 'preload.js'));
