@@ -1,0 +1,8 @@
+{
+  "id": "e334e89b-39b3-4d4e-9b1e-c3b679ecc051",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "is_active": true,
+  "activation_token": "b07f2f1d-1ec8-4c7d-9263-44a67440a5b3",
+  "role": "employee"
+}

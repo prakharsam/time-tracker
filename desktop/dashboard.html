@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Time Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center h-screen">
+  <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-6 space-y-6">
+    <h2 class="text-xl font-bold text-center" id="welcome-msg">Welcome!</h2>
+
+    <div>
+      <label class="block mb-1 font-medium">Select Project</label>
+      <select id="project" class="w-full border border-gray-300 rounded p-2">
+        <option value="project1">Project Alpha</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1 font-medium">Select Task</label>
+      <select id="task" class="w-full border border-gray-300 rounded p-2">
+        <option value="task1">Design Mockups</option>
+      </select>
+    </div>
+
+    <div class="text-center">
+      <button id="clock-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+        Clock In
+      </button>
+      <p class="mt-2" id="timer-display" style="display: none;">⏱️ 00:00:00</p>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+
+  <script>
+    console.log("🧪 window.electronAPI = ", window.electronAPI);
+    if (window.electronAPI) {
+      const user = window.electronAPI.getUser();
+      console.log("✅ Preload working, user:", user);
+    } else {
+      console.error("❌ Preload failed, electronAPI is undefined");
+    }
+  </script>
+  
+</body>
+</html>
