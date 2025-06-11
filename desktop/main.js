@@ -51,7 +51,7 @@ function createWindow () {
   
       const headers = form.getHeaders();
   
-      await axios.post("http://localhost:8000/screenshot", form, { headers, maxBodyLength: Infinity, });
+      await axios.post("http://localhost:8000/screenshots", form, { headers, maxBodyLength: Infinity, });
   
       console.log("📸 Screenshot + metadata uploaded!");
     } catch (err) {

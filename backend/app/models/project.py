@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List,Optional
 from uuid import uuid4
 
 class Project(BaseModel):
@@ -16,3 +16,16 @@ class Project(BaseModel):
             description=description,
             assigned_employee_ids=employees
         )
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    assigned_employee_ids: List[str] = []
+
+    class Config:
+        orm_mode = True
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str]
+    description: Optional[str]
+    assigned_employee_ids: Optional[List[str]]     

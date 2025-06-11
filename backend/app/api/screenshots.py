@@ -1,42 +1,42 @@
+from typing import List
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.db.models import Screenshot
+from app.services.db_screenshot import create_screenshot
+from app.models.screenshot import ScreenshotResponse, ScreenshotCreate
 import os
-from fastapi import APIRouter, UploadFile, Form, HTTPException, Query
-from fastapi.responses import FileResponse
-from app.services.storage import SCREENSHOTS
-from app.models.screenshot import ScreenshotMeta
+from uuid import uuid4
 
 router = APIRouter()
 
-UPLOAD_DIR = "app/static/screenshots"
-
-@router.get("/screenshots")
-def get_screenshots(employee_id: str = Query(...)):
-    filtered = [s for s in SCREENSHOTS if s.employee_id == employee_id]
-    return filtered
-
-@router.post("/screenshot")
+@router.post("/screenshots", response_model=ScreenshotResponse)
 async def upload_screenshot(
     employee_id: str = Form(...),
     has_permission: bool = Form(...),
-    ip_address: str = Form(...),
-    mac_address: str = Form(...),
-    image: UploadFile = Form(...)
+    ip_address: str = Form(None),
+    mac_address: str = Form(None),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db)
 ):
-    if image.content_type not in ["image/png", "image/jpeg"]:
-        raise HTTPException(status_code=400, detail="Invalid image type")
+    file_ext = os.path.splitext(image.filename)[1]
+    filename = f"{uuid4()}{file_ext}"
+    save_path = f"screenshots/{filename}"
 
-    filename = f"{employee_id}_{image.filename}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as f:
+    os.makedirs("screenshots", exist_ok=True)
+    with open(save_path, "wb") as f:
         f.write(await image.read())
 
-    meta = ScreenshotMeta.create(
-        employee_id=employee_id,
-        filename=filepath,
+    data = ScreenshotCreate(
+        employee_email=employee_id,
         has_permission=has_permission,
-        ip=ip_address,
-        mac=mac_address
+        ip_address=ip_address,
+        mac_address=mac_address,
+        image_path=save_path
     )
 
-    SCREENSHOTS.append(meta)
-    return {"message": "Screenshot uploaded", "path": filepath}
+    return create_screenshot(db, data)
+
+@router.get("/screenshots/{email}", response_model=List[ScreenshotResponse])
+def list_screenshots(email: str, db: Session = Depends(get_db)):
+    return db.query(Screenshot).filter_by(employee_email=email).all()

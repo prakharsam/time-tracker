@@ -1,25 +1,16 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from uuid import uuid4
+from datetime import datetime
 
-class ScreenshotMeta(BaseModel):
-    id: str
-    employee_id: str
-    timestamp: datetime
-    image_path: str
+class ScreenshotCreate(BaseModel):
+    employee_email: str
     has_permission: bool
-    ip_address: str
-    mac_address: str
+    ip_address: Optional[str]
+    mac_address: Optional[str]
+    image_path: str  # relative path
 
-    @staticmethod
-    def create(employee_id: str, filename: str, has_permission: bool, ip: str, mac: str):
-        return ScreenshotMeta(
-            id=str(uuid4()),
-            employee_id=employee_id,
-            timestamp=datetime.utcnow(),
-            image_path=filename,
-            has_permission=has_permission,
-            ip_address=ip,
-            mac_address=mac,
-        )
+class ScreenshotResponse(ScreenshotCreate):
+    id: str
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)

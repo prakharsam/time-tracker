@@ -1,43 +1,38 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import List, Optional
-from app.models.project import Project
-from app.services.storage import PROJECTS
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.models.project import ProjectCreate, ProjectUpdate, Project
+from app.services.db_project import create_project, get_all_projects, delete_project, update_project
+from app.db.session import get_db
 
 router = APIRouter()
 
-class ProjectRequest(BaseModel):
-    name: str
-    description: str
-    assigned_employee_ids: List[str]
-
-class ProjectUpdateRequest(BaseModel):
-    assigned_employee_ids: Optional[List[str]]
-
 @router.post("/projects")
-def create_project(req: ProjectRequest):
-    project = Project.create(req.name, req.description, req.assigned_employee_ids)
-    PROJECTS[project.id] = project
-    return {"message": "Project created", "project_id": project.id}
+def add_project(payload: ProjectCreate, db: Session = Depends(get_db)):
+    return create_project(
+        db,
+        name=payload.name,
+        description=payload.description,
+        assigned_employee_ids=payload.assigned_employee_ids
+    )
 
 @router.get("/projects")
-def list_projects():
-    return list(PROJECTS.values())
-
-@router.patch("/projects/{project_id}")
-def update_project(project_id: str, req: ProjectUpdateRequest):
-    project = PROJECTS.get(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    if req.assigned_employee_ids is not None:
-        project.assigned_employee_ids = req.assigned_employee_ids
-        
-    return {"message": "Project updated", "project": project}
+def list_projects(db: Session = Depends(get_db)):
+    return get_all_projects(db)
 
 @router.delete("/projects/{project_id}")
-def delete_project(project_id: str):
-    if project_id not in PROJECTS:
+def remove_project(project_id: str, db: Session = Depends(get_db)):
+    success = delete_project(db, project_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Project not found")
-    del PROJECTS[project_id]
-    return {"message": "Project deleted"}
+    return {"message": "Deleted"}
+
+@router.put("/projects/{project_id}")
+def update_existing_project(
+    project_id: str,
+    payload: ProjectUpdate,
+    db: Session = Depends(get_db)
+):
+    updated = update_project(db, project_id, payload.dict(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return updated

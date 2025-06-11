@@ -2,19 +2,12 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.services.db_employee import get_employee, create_employee, deactivate_employee
 from app.models.employee import Employee, InviteRequest
 # ==========================
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # ==========================
 # Invite Employee

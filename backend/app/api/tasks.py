@@ -1,25 +1,19 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from typing import List
-from app.models.task import Task
-from app.services.storage import TASKS, PROJECTS
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.db.models import Task
+from app.models.task import TaskCreate, TaskResponse
+from app.services.db_task import create_task, get_all_tasks
 
 router = APIRouter()
 
-class TaskRequest(BaseModel):
-    name: str
-    project_id: str
-    assigned_employee_ids: List[str]
+@router.post("/tasks", response_model=TaskResponse)
+def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)):
+    task = create_task(db, payload.name, payload.project_id, payload.assigned_employee_ids)
+    return TaskResponse.from_orm_with_employees(task)
 
-@router.post("/tasks")
-def create_task(req: TaskRequest):
-    if req.project_id not in PROJECTS:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    task = Task.create(req.name, req.project_id, req.assigned_employee_ids)
-    TASKS[task.id] = task
-    return {"message": "Task created", "task_id": task.id}
-
-@router.get("/tasks")
-def list_tasks():
-    return list(TASKS.values())
+@router.get("/tasks", response_model=List[TaskResponse])
+def list_tasks_api(db: Session = Depends(get_db)):
+    tasks = db.query(Task).all()
+    return [TaskResponse.from_orm_with_employees(t) for t in tasks]
