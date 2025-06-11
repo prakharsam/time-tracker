@@ -46,16 +46,17 @@ function createWindow () {
       form.append("mac_address", mac_address);
       form.append("image", streamifier.createReadStream(imgBuffer), {
         filename: `${Date.now()}.png`,
-        contentType: "image/png",
+        contentType: "image/png"
       });
   
-      const headers = form.getHeaders();
+      await axios.post("http://localhost:8000/screenshots", form, {
+        headers: form.getHeaders(),
+        maxBodyLength: Infinity
+      });
   
-      await axios.post("http://localhost:8000/screenshots", form, { headers, maxBodyLength: Infinity, });
-  
-      console.log("📸 Screenshot + metadata uploaded!");
+      console.log("📸 Screenshot uploaded");
     } catch (err) {
-      console.error("❌ Screenshot/metadata upload failed:", err);
+      console.error("❌ Screenshot upload failed:", err.message);
     }
   });  
 }

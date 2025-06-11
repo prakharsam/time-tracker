@@ -18,3 +18,5 @@ node_modules/
 web/.next/
 desktop/dist/
 static/
+screenshots/
+desktop/user.json

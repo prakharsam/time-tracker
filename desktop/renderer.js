@@ -8,10 +8,31 @@ const timerDisplay = document.getElementById("timer-display");
 let screenshotInterval;
 let currentUser;
 
+function disableInputs() {
+  document.getElementById("project").disabled = true;
+  document.getElementById("task").disabled = true;
+}
+
+function enableInputs() {
+  document.getElementById("project").disabled = false;
+  document.getElementById("task").disabled = false;
+}
+function startTimer() {
+  startTime = Math.floor(Date.now() / 1000);
+  timerDisplay.style.display = 'block';
+
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor(Date.now() / 1000) - startTime;
+    timerDisplay.innerText = `⏱️ ${formatTime(elapsed)}`;
+  }, 1000);
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   console.log("🌐 Dashboard loaded");
+  const savedTaskId = localStorage.getItem("taskId");
+  const savedProjectId = localStorage.getItem("projectId");
 
-  // ✅ Wait for user to load
+  // ✅ Load user from preload
   currentUser = await window.electronAPI.getUser();
 
   if (!currentUser || !currentUser.email) {
@@ -21,9 +42,31 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   console.log("✅ Logged in as:", currentUser.email);
 
+
+  const wasClockedIn = localStorage.getItem("clockedIn") === "true";
+  const storedStart = localStorage.getItem("clockInStart");
+
+  if (wasClockedIn && storedStart) {
+    clockedIn = true;
+    startTime = Math.floor(parseInt(storedStart, 10) / 1000);
+    clockBtn.innerText = "Clock Out";
+    clockBtn.classList.replace("bg-green-500", "bg-red-500");
+    document.getElementById("project").value = savedProjectId;
+    document.getElementById("task").value = savedTaskId;
+    disableInputs();
+    startTimer();
+
+    // 🔁 Resume screenshot loop
+    screenshotInterval = setInterval(() => {
+      window.electronAPI.sendScreenshot({
+        email: currentUser.email,
+        has_permission: true
+      });
+    }, 10 * 1000);}
+
   try {
-    const resProjects = await fetch("http://localhost:8000/projects");
-    const resTasks = await fetch("http://localhost:8000/tasks");
+    const resProjects = await fetch(`http://localhost:8000/projects?email=${currentUser.email}`);
+    const resTasks = await fetch(`http://localhost:8000/tasks?email=${currentUser.email}`);
 
     const projects = await resProjects.json();
     const tasks = await resTasks.json();
@@ -41,7 +84,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   } catch (err) {
     console.error("❌ Failed to load projects/tasks:", err);
+    alert("Could not load projects or tasks.");
   }
+
 });
 
 function formatTime(duration) {
@@ -51,82 +96,89 @@ function formatTime(duration) {
   return `${hrs}:${mins}:${secs}`;
 }
 
-function startTimer() {
-  startTime = Math.floor(Date.now() / 1000);
-  timerDisplay.style.display = 'block';
-
-  timerInterval = setInterval(() => {
-    const elapsed = Math.floor(Date.now() / 1000) - startTime;
-    timerDisplay.innerText = `⏱️ ${formatTime(elapsed)}`;
-  }, 1000);
-}
-
 function stopTimer() {
   clearInterval(timerInterval);
   timerDisplay.style.display = 'none';
 }
 
-// Clock-in/out button handler
 clockBtn.addEventListener("click", async () => {
   const projectId = document.getElementById("project").value;
   const taskId = document.getElementById("task").value;
 
   if (!projectId || !taskId) {
-    alert("Select a project and task first.");
+    alert("Select both project and task first.");
     return;
   }
 
   clockedIn = !clockedIn;
 
   if (clockedIn) {
+    disableInputs();
+    localStorage.setItem("clockedIn", "true");
+    localStorage.setItem("clockInStart", Date.now().toString());
+    localStorage.setItem("taskId", taskId);
+    localStorage.setItem("projectId", projectId);
+
     clockBtn.innerText = "Clock Out";
     clockBtn.classList.replace("bg-green-500", "bg-red-500");
 
-    // ✅ Call backend clock-in API
-    console.log(JSON.stringify({
-      employee_id: currentUser.email, // TODO: replace with actual user from preload or memory
-      project_id: projectId,
-      task_id: taskId
-    }))
-    await fetch("http://localhost:8000/clock-in", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        employee_id: currentUser.email, // TODO: replace with actual user from preload or memory
-        project_id: projectId,
-        task_id: taskId
-      })
-    });
+    try {
+      await fetch("http://localhost:8000/clock-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employee_email: currentUser.email,
+          project_id: projectId,
+          task_id: taskId
+        })
+      });
+
+      console.log("✅ Clock-in successful");
+    } catch (err) {
+      console.error("❌ Clock-in error:", err);
+      alert("Failed to clock in.");
+      return;
+    }
 
     startTimer();
 
-    // Placeholder for screenshot + metadata loop
     screenshotInterval = setInterval(() => {
       window.electronAPI.sendScreenshot({
         email: currentUser.email,
-        has_permission: true
+        has_permission: true // Real permission check can be wired in future
       });
-    }, 10 * 1000); // every 30s
-    
-    console.log("🟡 Starting screenshot & metadata capture loop...");
+    }, 10 * 1000);
+
+    console.log("📸 Screenshot capture started");
   } else {
+    enableInputs();
     clockBtn.innerText = "Clock In";
     clockBtn.classList.replace("bg-red-500", "bg-green-500");
 
-    // ✅ Call backend clock-out API
-    await fetch("http://localhost:8000/clock-out", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        employee_id: currentUser.email // TODO: replace with actual user
-      })
-    });
+    try {
+      await fetch("http://localhost:8000/clock-out", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employee_email: currentUser.email,
+          project_id: localStorage.getItem("projectId"),
+          task_id: localStorage.getItem("taskId")
+        })
+      });
+
+      console.log("✅ Clock-out successful");
+      localStorage.removeItem("clockedIn");
+      localStorage.removeItem("clockInStart");
+      localStorage.removeItem("taskId");
+      localStorage.removeItem("projectId");
+    } catch (err) {
+      console.error("❌ Clock-out error:", err);
+      alert("Failed to clock out.");
+    }
 
     clearInterval(screenshotInterval);
-
     stopTimer();
 
-    // 🧠 Stop screenshot & metadata loop
-    console.log("🛑 Stopping screenshot & metadata capture...");
+    console.log("🛑 Screenshot capture stopped");
   }
 });
