@@ -1,20 +1,18 @@
-from pydantic import BaseModel
-from datetime import datetime
-from uuid import uuid4
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
 
-class TimeLog(BaseModel):
-    id: str
-    employee_id: str
+class TimeLogCreate(BaseModel):
+    employee_email: str
     task_id: str
-    clock_in: datetime
-    clock_out: Optional[datetime] = None
+    project_id: str
 
-    @staticmethod
-    def create(employee_id: str, task_id: str):
-        return TimeLog(
-            id=str(uuid4()),
-            employee_id=employee_id,
-            task_id=task_id,
-            clock_in=datetime.utcnow()
-        )
+class TimeLogOut(BaseModel):
+    id: str
+    employee_email: str
+    task_id: str
+    project_id: str
+    clock_in: datetime
+    clock_out: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)

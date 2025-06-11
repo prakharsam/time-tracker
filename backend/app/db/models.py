@@ -76,12 +76,14 @@ class Task(Base):
 class TimeLog(Base):
     __tablename__ = "time_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(String, ForeignKey("employees.email"))
-    project_id = Column(String)
-    task_id = Column(String)
-    clock_in = Column(DateTime)
-    clock_out = Column(DateTime)
+    id = Column(String, primary_key=True, index=True)
+    employee_email = Column(String, ForeignKey("employees.email"))
+    task_id = Column(String, ForeignKey("tasks.id"))
+    project_id = Column(String, ForeignKey("projects.id"))
+    clock_in = Column(DateTime, nullable=False)
+    clock_out = Column(DateTime, nullable=True)
 
-    employee = relationship("Employee", back_populates="time_logs")
+    employee = relationship("Employee")
+    task = relationship("Task")
+    project = relationship("Project")
 
