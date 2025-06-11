@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from uuid import uuid4
 
@@ -24,3 +24,11 @@ class Employee(BaseModel):
             activation_token=str(uuid4()),
             role="employee"
         )
+
+class EmployeeResponse(BaseModel):
+    name: str
+    email: str
+    is_active: bool
+    role: str
+
+    model_config = ConfigDict(from_attributes=True)

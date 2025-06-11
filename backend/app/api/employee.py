@@ -1,10 +1,12 @@
+from typing import List
 import uuid
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services.db_employee import get_employee, create_employee, deactivate_employee
-from app.models.employee import Employee, InviteRequest
+from app.models.employee import EmployeeResponse, InviteRequest
+from app.db.models import Employee
 # ==========================
 
 router = APIRouter()
@@ -80,4 +82,12 @@ def delete_employee(email: str, db: Session = Depends(get_db)):
 
     deactivate_employee(db, email)
     return {"message": f"{email} deactivated."}
+
+# ==========================
+# Get all Employees
+# ==========================
+
+@router.get("/employees", response_model=List[EmployeeResponse])
+def list_employees(db: Session = Depends(get_db)):
+    return db.query(Employee).all()
 
