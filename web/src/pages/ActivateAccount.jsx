@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+//import '..App/App.css'; // Adjust the path as necessary
 
 export default function ActivateAccount() {
   const [searchParams] = useSearchParams();
