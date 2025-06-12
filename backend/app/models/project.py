@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List,Optional
 from uuid import uuid4
 
@@ -22,10 +22,18 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = ""
     assigned_employee_ids: List[str] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ProjectUpdate(BaseModel):
     name: Optional[str]
     description: Optional[str]
     assigned_employee_ids: Optional[List[str]]     
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    assigned_employee_ids: List[str]
+
+    model_config = ConfigDict(from_attributes=True)

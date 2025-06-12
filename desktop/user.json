@@ -1,7 +1,7 @@
 {
-  "email": "doe@example.com",
+  "email": "test@example.com",
   "is_active": true,
   "activation_token": null,
-  "name": "Doe John",
+  "name": "Test",
   "role": "employee"
 }

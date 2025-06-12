@@ -29,7 +29,7 @@ async def invite(request: InviteRequest, background_tasks: BackgroundTasks, db: 
 
     activation_token = str(uuid.uuid4())
     create_employee(db, email=request.email, name=request.name, activation_token=activation_token)
-    activation_link = f"http://localhost:8000/activate?email={request.email}&token={activation_token}"
+    activation_link = f"http://localhost:5173/activate?email={request.email}&token={activation_token}"
     # message = MessageSchema(
     #     subject="Activate Your Account",
     #     recipients=[request.email],
