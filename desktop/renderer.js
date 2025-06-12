@@ -4,19 +4,25 @@ let startTime;
 
 const clockBtn = document.getElementById("clock-btn");
 const timerDisplay = document.getElementById("timer-display");
+const projectSelect = document.getElementById("project");
+const taskSelect = document.getElementById("task");
+const projectLoading = document.getElementById("project-loading");
+const taskLoading = document.getElementById("task-loading");
+const logoutBtn = document.getElementById("logout-btn");
 
 let screenshotInterval;
 let currentUser;
 
 function disableInputs() {
-  document.getElementById("project").disabled = true;
-  document.getElementById("task").disabled = true;
+  projectSelect.disabled = true;
+  taskSelect.disabled = true;
 }
 
 function enableInputs() {
-  document.getElementById("project").disabled = false;
-  document.getElementById("task").disabled = false;
+  projectSelect.disabled = false;
+  taskSelect.disabled = !projectSelect.value; // Only enable task if project is selected
 }
+
 function startTimer() {
   startTime = Math.floor(Date.now() / 1000);
   timerDisplay.style.display = 'block';
@@ -25,6 +31,45 @@ function startTimer() {
     const elapsed = Math.floor(Date.now() / 1000) - startTime;
     timerDisplay.innerText = `⏱️ ${formatTime(elapsed)}`;
   }, 1000);
+}
+
+async function loadProjects() {
+  try {
+    projectLoading.style.display = 'block';
+    const response = await fetch(`http://localhost:8000/projects/employee/${currentUser.email}`);
+    const projects = await response.json();
+    
+    projectSelect.innerHTML = '<option value="">Select a project...</option>' + 
+      projects.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+    
+    projectLoading.style.display = 'none';
+  } catch (err) {
+    console.error("❌ Failed to load projects:", err);
+    alert("Could not load projects.");
+    projectLoading.style.display = 'none';
+  }
+}
+
+async function loadTasks(projectId) {
+  try {
+    taskLoading.style.display = 'block';
+    taskSelect.disabled = true;
+    taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
+    
+    const response = await fetch(`http://localhost:8000/tasks/employee/${currentUser.email}/project/${projectId}`);
+    const tasks = await response.json();
+    
+    taskSelect.innerHTML = '<option value="">Select a task...</option>' + 
+      tasks.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    
+    taskSelect.disabled = false;
+    taskLoading.style.display = 'none';
+  } catch (err) {
+    console.error("❌ Failed to load tasks:", err);
+    alert("Could not load tasks.");
+    taskLoading.style.display = 'none';
+    taskSelect.innerHTML = '<option value="">Error loading tasks</option>';
+  }
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -42,6 +87,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   console.log("✅ Logged in as:", currentUser.email);
 
+  // Load initial projects
+  await loadProjects();
 
   const wasClockedIn = localStorage.getItem("clockedIn") === "true";
   const storedStart = localStorage.getItem("clockInStart");
@@ -51,8 +98,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     startTime = Math.floor(parseInt(storedStart, 10) / 1000);
     clockBtn.innerText = "Clock Out";
     clockBtn.classList.replace("bg-green-500", "bg-red-500");
-    document.getElementById("project").value = savedProjectId;
-    document.getElementById("task").value = savedTaskId;
+    
+    // Restore saved project and task
+    if (savedProjectId) {
+      projectSelect.value = savedProjectId;
+      await loadTasks(savedProjectId);
+      if (savedTaskId) {
+        taskSelect.value = savedTaskId;
+      }
+    }
+    
     disableInputs();
     startTimer();
 
@@ -62,31 +117,19 @@ window.addEventListener("DOMContentLoaded", async () => {
         email: currentUser.email,
         has_permission: true
       });
-    }, 10 * 1000);}
-
-  try {
-    const resProjects = await fetch(`http://localhost:8000/projects?email=${currentUser.email}`);
-    const resTasks = await fetch(`http://localhost:8000/tasks?email=${currentUser.email}`);
-
-    const projects = await resProjects.json();
-    const tasks = await resTasks.json();
-
-    const projectSelect = document.getElementById("project");
-    const taskSelect = document.getElementById("task");
-
-    projectSelect.innerHTML = projects.map(p =>
-      `<option value="${p.id}">${p.name}</option>`
-    ).join("");
-
-    taskSelect.innerHTML = tasks.map(t =>
-      `<option value="${t.id}">${t.name}</option>`
-    ).join("");
-
-  } catch (err) {
-    console.error("❌ Failed to load projects/tasks:", err);
-    alert("Could not load projects or tasks.");
+    }, 10 * 1000);
   }
+});
 
+// Add event listener for project selection
+projectSelect.addEventListener("change", async (e) => {
+  const projectId = e.target.value;
+  if (projectId) {
+    await loadTasks(projectId);
+  } else {
+    taskSelect.innerHTML = '<option value="">Select a project first...</option>';
+    taskSelect.disabled = true;
+  }
 });
 
 function formatTime(duration) {
@@ -102,8 +145,8 @@ function stopTimer() {
 }
 
 clockBtn.addEventListener("click", async () => {
-  const projectId = document.getElementById("project").value;
-  const taskId = document.getElementById("task").value;
+  const projectId = projectSelect.value;
+  const taskId = taskSelect.value;
 
   if (!projectId || !taskId) {
     alert("Select both project and task first.");
@@ -145,7 +188,7 @@ clockBtn.addEventListener("click", async () => {
     screenshotInterval = setInterval(() => {
       window.electronAPI.sendScreenshot({
         email: currentUser.email,
-        has_permission: true // Real permission check can be wired in future
+        has_permission: true
       });
     }, 10 * 1000);
 
@@ -181,4 +224,20 @@ clockBtn.addEventListener("click", async () => {
 
     console.log("🛑 Screenshot capture stopped");
   }
+});
+
+logoutBtn.addEventListener("click", () => {
+    if (clockedIn) {
+        alert("Please clock out before logging out");
+        return;
+    }
+    
+    // Clear all stored data
+    localStorage.clear();
+    
+    // Delete user.json
+    window.electronAPI.deleteUser();
+    
+    // Redirect to login
+    window.location.href = "login.html";
 });

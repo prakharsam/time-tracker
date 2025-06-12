@@ -11,12 +11,7 @@ project_employees = Table(
     Column("project_id", String, ForeignKey("projects.id")),
     Column("employee_id", String, ForeignKey("employees.email"))
 )
-task_employee_association = Table(
-    "task_employee_association",
-    Base.metadata,
-    Column("task_id", ForeignKey("tasks.id")),
-    Column("employee_email", ForeignKey("employees.email"))
-)
+
 class Employee(Base):
     __tablename__ = "employees"
 
@@ -29,8 +24,6 @@ class Employee(Base):
     projects = relationship("Project", secondary=project_employees, back_populates="assigned_employees")
     time_logs = relationship("TimeLog", back_populates="employee")
     screenshots = relationship("Screenshot", back_populates="employee")
-    tasks = relationship(
-    "Task", secondary=task_employee_association, back_populates="assigned_employees")
 
 
 class Screenshot(Base):
@@ -56,7 +49,7 @@ class Project(Base):
     description = Column(String, nullable=True)
 
     assigned_employees = relationship("Employee", secondary=project_employees, back_populates="projects")
-    tasks = relationship("Task", back_populates="project")
+    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -65,13 +58,10 @@ class Task(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid4()))
     name = Column(String, nullable=False)
     project_id = Column(String, ForeignKey("projects.id"), nullable=False)
-    assigned_employees = relationship(
-        "Employee",
-        secondary=task_employee_association,
-        back_populates="tasks"
-    )
+    employee_email = Column(String, ForeignKey("employees.email"), nullable=False)
 
     project = relationship("Project", back_populates="tasks")
+    employee = relationship("Employee")
 
 class TimeLog(Base):
     __tablename__ = "time_logs"
@@ -86,4 +76,13 @@ class TimeLog(Base):
     employee = relationship("Employee")
     task = relationship("Task")
     project = relationship("Project")
+
+class Admin(Base):
+    __tablename__ = "admins"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid4()))
+    email = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -1,98 +1,187 @@
 // Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../api';
+import {
+  Container, Typography, Box, Button, TextField, CircularProgress, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton
+} from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export default function Dashboard() {
   const [employees, setEmployees] = useState([]);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, email: null });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch("http://localhost:8000/employees")
-      .then(res => res.json())
+  const fetchEmployees = () => {
+    setLoading(true);
+    setError('');
+    apiFetch("/employees")
       .then(data => setEmployees(data))
-      .catch(err => console.error("Failed to load employees:", err));
-  }, []);
+      .catch(err => {
+        setError(err.detail || 'Failed to load employees');
+        if (err.detail && err.detail.toLowerCase().includes('unauthorized')) {
+          navigate('/login');
+        }
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+    // eslint-disable-next-line
+  }, [navigate]);
 
   const handleInvite = async () => {
-    if (!email.trim()) {
-      alert("Please enter a valid email.");
+    if (!email.trim() || !name.trim()) {
+      setSnackbar({ open: true, message: 'Please enter both name and email.', severity: 'error' });
       return;
     }
-
     try {
-      const response = await fetch("http://localhost:8000/invite", {
+      await apiFetch("/invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: { email, name },
       });
-
-      if (response.ok) {
-        alert("Invite sent successfully!");
-        setEmail('');
-      } else {
-        alert("Failed to send invite.");
-      }
+      setSnackbar({ open: true, message: 'Invite sent successfully!', severity: 'success' });
+      setEmail('');
+      setName('');
+      fetchEmployees();
     } catch (err) {
-      console.error("Error sending invite:", err);
-      alert("Error sending invite.");
+      setSnackbar({ open: true, message: (typeof err === 'object' ? err.detail || JSON.stringify(err) : err), severity: 'error' });
+    }
+  };
+
+  const handleDelete = async (email) => {
+    setDeleteDialog({ open: true, email });
+  };
+
+  const handleReactivate = async (email) => {
+    try {
+      await apiFetch(`/employee/${email}/activate`, { method: 'POST' });
+      setSnackbar({ open: true, message: 'Employee reactivated.', severity: 'success' });
+      fetchEmployees();
+    } catch (err) {
+      setSnackbar({ open: true, message: (typeof err === 'object' ? err.detail || JSON.stringify(err) : err), severity: 'error' });
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await apiFetch(`/employee/${deleteDialog.email}`, { method: 'DELETE' });
+      setSnackbar({ open: true, message: 'Employee deactivated.', severity: 'success' });
+      fetchEmployees();
+    } catch (err) {
+      setSnackbar({ open: true, message: (typeof err === 'object' ? err.detail || JSON.stringify(err) : err), severity: 'error' });
+    } finally {
+      setDeleteDialog({ open: false, email: null });
     }
   };
 
   const handleLogout = () => {
+    sessionStorage.clear();
     navigate("/login");
   };
 
   return (
-    <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Employee Dashboard</h2>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-
-      <div style={{ marginTop: '2rem' }}>
-        <h3>Invite New Employee</h3>
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-          <input
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4">Employee Dashboard</Typography>
+      </Box>
+      <Box sx={{ mt: 4, mb: 2 }}>
+        <Typography variant="h6">Invite New Employee</Typography>
+        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+          <TextField
+            label="Employee Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Employee Email"
             type="email"
-            placeholder="Enter employee email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ flex: 1 }}
+            fullWidth
           />
-          <button onClick={handleInvite}>Send Invite</button>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '3rem' }}>
-        <h3>All Employees</h3>
-        {employees.length === 0 ? (
-          <p>No employees found.</p>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleInvite}
+            startIcon={<PersonAddIcon />}
+            sx={{
+              borderRadius: 2,
+              minWidth: '120px',
+              px: 3,
+              py: 1.5,
+              fontWeight: 600,
+              fontSize: '1rem',
+              textTransform: 'none',
+              '&:hover': {
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Send Invite
+          </Button>
+        </Box>
+      </Box>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6">All Employees</Typography>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+        ) : employees.length === 0 ? (
+          <Typography>No employees found.</Typography>
         ) : (
-          <ul style={{ paddingLeft: 0 }}>
+          <List>
             {employees.map(emp => (
-              <li
-                key={emp.email}
-                style={{
-                  listStyle: 'none',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  padding: '10px',
-                  marginBottom: '10px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <strong>{emp.email}</strong><br />
-                  Status: {emp.is_active ? '✅ Active' : '❌ Inactive'}
-                </div>
-              </li>
+              <ListItem key={emp.email} sx={{ border: '1px solid #eee', borderRadius: 2, mb: 1 }}>
+                <ListItemText
+                  primary={<>
+                    <strong>{emp.name}</strong> ({emp.email})
+                  </>}
+                  secondary={`Status: ${emp.is_active ? '✅ Active' : '❌ Inactive'}`}
+                />
+                <ListItemSecondaryAction>
+                  {emp.is_active ? (
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(emp.email)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  ) : (
+                    <IconButton edge="end" aria-label="reactivate" color="success" onClick={() => handleReactivate(emp.email)}>
+                      <CheckCircleIcon />
+                    </IconButton>
+                  )}
+                </ListItemSecondaryAction>
+              </ListItem>
             ))}
-          </ul>
+          </List>
         )}
-      </div>
-    </div>
+      </Box>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, email: null })}>
+        <DialogTitle>Deactivate Employee</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to deactivate this employee?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, email: null })}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">Deactivate</Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+        <Alert onClose={() => setSnackbar(s => ({ ...s, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 }

@@ -2,11 +2,10 @@ from typing import List
 from app.db.models import Task, Employee, Project
 from sqlalchemy.orm import Session
 
-def create_task(db: Session, name: str, project_id: str, employee_ids: List[str]):
+def create_task(db: Session, name: str, project_id: str, employee_email: str):
     project = db.query(Project).filter(Project.id == project_id).first()
-    employees = db.query(Employee).filter(Employee.email.in_(employee_ids)).all()
-
-    task = Task(name=name, project_id=project_id, assigned_employees=employees)
+    employee = db.query(Employee).filter(Employee.email == employee_email).first()
+    task = Task(name=name, project_id=project_id, employee_email=employee_email)
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -14,3 +13,25 @@ def create_task(db: Session, name: str, project_id: str, employee_ids: List[str]
 
 def get_all_tasks(db: Session):
     return db.query(Task).all()
+
+def update_task(db: Session, task_id: str, update_data: dict):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        return None
+    if "name" in update_data:
+        task.name = update_data["name"]
+    if "employee_email" in update_data:
+        task.employee_email = update_data["employee_email"]
+    if "project_id" in update_data:
+        task.project_id = update_data["project_id"]
+    db.commit()
+    db.refresh(task)
+    return task
+
+def delete_task(db: Session, task_id: str):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        return False
+    db.delete(task)
+    db.commit()
+    return True

@@ -6,6 +6,26 @@ class InviteRequest(BaseModel):
     email: str
     name: str
 
+class AdminCreate(BaseModel):
+    email: EmailStr
+    name: str
+    password: str
+
+class AdminLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class EmployeeCreate(BaseModel):
+    name: str
+    email: EmailStr
+    role: str = "employee"
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    activation_token: Optional[str] = None
+
 class Employee(BaseModel):
     id: str
     name: str

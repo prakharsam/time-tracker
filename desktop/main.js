@@ -33,6 +33,13 @@ function createWindow () {
     fs.writeFileSync(userPath, JSON.stringify(employee, null, 2));
   });
 
+  ipcMain.on('delete-user', () => {
+    const userPath = path.join(__dirname, 'user.json');
+    if (fs.existsSync(userPath)) {
+      fs.unlinkSync(userPath);
+    }
+  });
+
   ipcMain.on("capture-screenshot", async (event, { email, has_permission }) => {
     try {
       const imgBuffer = await screenshot({ format: 'png' });

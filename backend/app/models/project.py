@@ -1,6 +1,16 @@
 from pydantic import BaseModel
-from typing import List,Optional
+from typing import List, Optional
 from uuid import uuid4
+
+class ProjectEmployee(BaseModel):
+    name: str
+    email: str
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    assigned_employees: List[ProjectEmployee]
 
 class Project(BaseModel):
     id: str
