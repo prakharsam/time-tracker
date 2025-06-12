@@ -7,6 +7,9 @@ from app.db.session import get_db
 from app.services.db_employee import get_employee, create_employee, deactivate_employee
 from app.models.employee import EmployeeResponse, InviteRequest
 from app.db.models import Employee
+from fastapi_mail import FastMail, MessageSchema
+from starlette.background import BackgroundTasks
+from app.mail_config import conf
 # ==========================
 
 router = APIRouter()
@@ -20,12 +23,21 @@ class InviteRequest(BaseModel):
     email: EmailStr
 
 @router.post("/invite")
-def invite(request: InviteRequest, db: Session = Depends(get_db)):
+async def invite(request: InviteRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if get_employee(db, request.email):
         raise HTTPException(status_code=400, detail="Employee already exists")
 
     activation_token = str(uuid.uuid4())
     create_employee(db, email=request.email, name=request.name, activation_token=activation_token)
+    activation_link = f"http://localhost:8000/activate?email={request.email}&token={activation_token}"
+    # message = MessageSchema(
+    #     subject="Activate Your Account",
+    #     recipients=[request.email],
+    #     body=f"Welcome! Activate your account here: {activation_link}",
+    #     subtype="plain"
+    # )
+
+    # background_tasks.add_task(FastMail(conf).send_message, message)
 
     return {
         "message": "Invitation sent.",
