@@ -33,7 +33,7 @@ export default function ProjectDashboard() {
     setError('');
     Promise.all([
       apiFetch('/projects'),
-      apiFetch('/employees'),
+      apiFetch('/employees/active'),
       apiFetch('/tasks')
     ]).then(([projects, employees, tasks]) => {
       // Attach tasks to projects

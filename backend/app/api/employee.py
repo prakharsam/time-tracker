@@ -23,7 +23,6 @@ from app.core.auth import get_current_admin
 
 router = APIRouter()
 
-# Store verification codes temporarily (in production, use Redis or similar)
 verification_codes = {}
 
 SECRET_KEY = "supersecretkey"  # In production, use env var
@@ -48,7 +47,7 @@ async def invite(request: InviteRequest, background_tasks: BackgroundTasks, db: 
 
     activation_token = str(uuid.uuid4())
     create_employee(db, email=request.email, name=request.name, activation_token=activation_token)
-    activation_link = f"http://localhost:5174/activate?email={request.email}&token={activation_token}"
+    activation_link = f"http://localhost:5173/activate?email={request.email}&token={activation_token}"
     
     try:
         await send_invitation_email(request.email, request.name, activation_link)
@@ -116,12 +115,22 @@ def delete_employee(email: str, db: Session = Depends(get_db), admin=Depends(get
     return {"message": f"{email} deactivated."}
 
 # ==========================
-# Get all Employees
+# Get all Employees (Admin only)
 # ==========================
 
 @router.get("/employees", response_model=List[EmployeeResponse])
-def list_employees(db: Session = Depends(get_db), admin=Depends(get_current_admin)):
+def list_all_employees(db: Session = Depends(get_db), admin=Depends(get_current_admin)):
+    """Get all employees (including deactivated ones). Admin only."""
     return db.query(Employee).all()
+
+# ==========================
+# Get Active Employees
+# ==========================
+
+@router.get("/employees/active", response_model=List[EmployeeResponse])
+def list_active_employees(db: Session = Depends(get_db)):
+    """Get only active employees. Used for task assignments and other active operations."""
+    return db.query(Employee).filter(Employee.is_active == True).all()
 
 class LoginCodeRequest(BaseModel):
     email: EmailStr
@@ -132,6 +141,10 @@ async def send_login_code(request: LoginCodeRequest, db: Session = Depends(get_d
     employee = get_employee(db, request.email)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Check if employee is deactivated
+    if not employee.is_active:
+        raise HTTPException(status_code=403, detail="Your account has been deactivated. Please contact your administrator.")
     
     # Generate verification code
     code = generate_verification_code()
@@ -172,6 +185,10 @@ def verify_code(request: VerifyCodeRequest, db: Session = Depends(get_db)):
     employee = get_employee(db, request.email)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Check if employee is deactivated
+    if not employee.is_active:
+        raise HTTPException(status_code=403, detail="Your account has been deactivated. Please contact your administrator.")
     
     # Remove used code
     del verification_codes[request.email]

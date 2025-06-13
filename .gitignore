@@ -20,3 +20,5 @@ desktop/dist/
 static/
 screenshots/
 desktop/user.json
+web/public/downloads/Clocker.dmg
+web/public/downloads/desktop-app.dmg

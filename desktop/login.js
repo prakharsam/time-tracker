@@ -57,7 +57,12 @@ sendCodeBtn.addEventListener('click', async () => {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to send verification code');
+            if (response.status === 403) {
+                showError('Your account has been deactivated. Please contact your administrator for assistance.');
+            } else {
+                throw new Error(error.detail || 'Failed to send verification code');
+            }
+            return;
         }
 
         currentEmail = email;
@@ -89,7 +94,11 @@ verifyCodeBtn.addEventListener('click', async () => {
 
         if (!response.ok) {
             const error = await response.json();
-            showError(error);
+            if (response.status === 403) {
+                showError('Your account has been deactivated. Please contact your administrator for assistance.');
+            } else {
+                showError(error);
+            }
             return;
         }
 

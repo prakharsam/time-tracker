@@ -50,7 +50,7 @@ export default function ActivateAccount() {
           <>
             <h2 style={styles.heading}>✅ Account Activated</h2>
             <p>You can now download the desktop app and start working.</p>
-            <a href="/downloads/desktop-app.dmg" download>
+            <a href="/downloads/Clocker.dmg" download>
               <button style={styles.button}>⬇️ Download App</button>
             </a>
           </>

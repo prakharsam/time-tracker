@@ -11,8 +11,11 @@ router = APIRouter()
 
 @router.post("/tasks", response_model=TaskResponse)
 def create_task_api(payload: TaskCreate, db: Session = Depends(get_db), admin=Depends(get_current_admin)):
-    task = create_task(db, payload.name, payload.project_id, payload.employee_email)
-    return TaskResponse.from_orm_with_employee(task)
+    try:
+        task = create_task(db, payload.name, payload.project_id, payload.employee_email)
+        return TaskResponse.from_orm_with_employee(task)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/tasks", response_model=List[TaskResponse])
 def list_tasks_api(db: Session = Depends(get_db)):
@@ -31,10 +34,13 @@ def list_employee_project_tasks(employee_id: str, project_id: str, db: Session =
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 def update_task_api(task_id: str, payload: TaskCreate, db: Session = Depends(get_db), admin=Depends(get_current_admin)):
-    task = update_task(db, task_id, payload.dict(exclude_unset=True))
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return TaskResponse.from_orm_with_employee(task)
+    try:
+        task = update_task(db, task_id, payload.dict(exclude_unset=True))
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return TaskResponse.from_orm_with_employee(task)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/tasks/{task_id}")
 def delete_task_api(task_id: str, db: Session = Depends(get_db), admin=Depends(get_current_admin)):
